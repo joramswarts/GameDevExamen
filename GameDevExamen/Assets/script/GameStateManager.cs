@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// Hier geven we de mogelijke spelstatussen aan
 public enum GameState
 {
     MainMenu,
@@ -12,107 +13,119 @@ public enum GameState
 
 public class GameStateManager : MonoBehaviour
 {
+    // Singleton om overal makkelijk bij deze class te kunnen
     public static GameStateManager instance;
 
+    // UI-elementen voor de verschillende menu’s
     public GameObject MainMenuUi;
     public GameObject inGameMenuUi;
     public GameObject PauseMenuUi;
     public GameObject GameOverMenuUi;
 
+    // Kleine vertraging bij het wisselen van toestand
     public int delay = 1;
 
+    // De huidige status van het spel, alleen uitleesbaar
     public GameState CurrentState { get; private set; }
 
-    // Voeg deze regel toe:
+    // Verwijzing naar de obstacle generator, zodat we die kunnen resetten
     public ObstacleGenerator obstacleGenerator;
 
     private void Awake()
     {
+        // Zorgt ervoor dat er maar één GameStateManager is
         if (instance == null)
         {
             instance = this;
-            DontDestroyOnLoad(gameObject);
+            DontDestroyOnLoad(gameObject); // Blijft bestaan tussen scenes
         }
         else
         {
-            Destroy(gameObject);
+            Destroy(gameObject); // Verwijder als er al één is
         }
     }
 
     private void Start()
     {
+        // Begin altijd in het hoofdmenu
         ChangeState(GameState.MainMenu);
     }
 
+    // Verandert de huidige gamestatus (asynchroon met vertraging)
     public void ChangeState(GameState newState)
     {
         StartCoroutine(TransitionToState(newState)); 
     }
 
+    // Snelle methods om naar een bepaalde status te gaan
     public void changeToMainMenu() => ChangeState(GameState.MainMenu);
     public void changeToPlaying() => ChangeState(GameState.Playing);
     public void changeToPause() => ChangeState(GameState.Pause);
     public void changeToGameOver() => ChangeState(GameState.GameOver);
 
+    // Zet het hele spel terug in de beginstaat
     public void ResetGame()
     {
-        // Reset score
+        // Score resetten
         scoreManager.instance.ResetScore();
 
-        // Reset coins
+        // Coins resetten
         coinManager.instance.ResetCoins();
 
-        // Reset speler
+        // Speler resetten (bijv. positie/herstarten animatie)
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
             player.GetComponent<PlayerMovement>().ResetPlayer();
         }
 
-        // Verwijder obstakels
+        // Obstakels weghalen uit de scene
         foreach (var obj in GameObject.FindGameObjectsWithTag("Obstacle"))
         {
             Destroy(obj);
         }
 
-        // Verwijder coins
+        // Coins weghalen uit de scene
         foreach (var coin in GameObject.FindGameObjectsWithTag("Coin"))
         {
             Destroy(coin);
         }
 
-        // **Reset de obstacle generator spawn positie**
+        // Obstacle generator opnieuw instellen
         if(obstacleGenerator != null)
         {
             obstacleGenerator.ResetGenerator();
         }
 
-        // Start opnieuw met de Playing-state
+        // Zet spel weer op "Playing"
         changeToPlaying();
     }
 
+    // Zorgt voor de overgang naar de nieuwe gamestatus
     private IEnumerator TransitionToState(GameState newState)
     {
+        // Als we niet naar het hoofdmenu gaan, wachten we even
         if (newState != GameState.MainMenu)
             yield return new WaitForSecondsRealtime(delay);
 
         CurrentState = newState;
-        HandleStateChange();
+        HandleStateChange(); // Voert aanpassingen uit voor nieuwe status
     }
 
+    // Regelt welke UI en instellingen bij de huidige status horen
     private void HandleStateChange()
     {
-        HideAllMenu();
+        HideAllMenu(); // Eerst alles verbergen
 
         switch (CurrentState)
         {
             case GameState.MainMenu:
-                Time.timeScale = 0;
+                Time.timeScale = 0; // Tijd stilstaan
                 MainMenuUi.SetActive(true);
                 AudioManager.instance.PlayMusic(AudioManager.instance.menuMusic);
                 break;
             case GameState.Playing:
-                Time.timeScale = 1;
+                Time.timeScale = 1; // Tijd weer laten lopen
                 inGameMenuUi.SetActive(true);
                 AudioManager.instance.PlayMusic(AudioManager.instance.inGameMusic);
                 break;
@@ -129,6 +142,7 @@ public class GameStateManager : MonoBehaviour
         }
     }
 
+    // Zet alle UI schermen uit
     private void HideAllMenu()
     {
         MainMenuUi.SetActive(false);
